@@ -40,12 +40,29 @@ func buildEnvPrefix(env Env) string {
 }
 
 func openNewTab(command string, env Env) error {
+	command = os.Expand(command, func(key string) string {
+		return env[key]
+	})
 	environmentPrefix := buildEnvPrefix(env)
 	profileID := os.Getenv("WT_PROFILE_ID")
-	commandToExecute := environmentPrefix + " && " + command
+
+	preamble := "echo 'Executing: " +  command + "'"
+	divider := "echo '-------------------------------------'"
+
+	// returnToExit := "echo 'Press any key to exit' && read"
+	commandsToAppend := []string{}
+	for _, part := range []string{environmentPrefix, preamble, divider, command} {
+		if part != "" {
+			commandsToAppend = append(commandsToAppend, part)
+		}
+	}
+
+	commandToExecute := strings.Join(commandsToAppend, " && ")
+	fmt.Println(commandToExecute)
 
 	cmd := exec.Command("wt.exe", "-w", "0", "nt", "--profile", profileID,
 		"--", "wsl.exe", "--", "bash", "-c", commandToExecute)
+
 	return cmd.Start()
 }
 
@@ -62,7 +79,6 @@ func main() {
 	}
 
 	for _, tabCommand := range config.Tabs {
-		fmt.Println(tabCommand)
 		openNewTab(tabCommand, config.Env)
 	}
 }
