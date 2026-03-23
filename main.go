@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"gopkg.in/yaml.v3"
 )
@@ -12,8 +13,8 @@ import (
 type Env map[string]string
 
 type Config struct {
-	Tabs []string `yaml:"tabs"`
-	Env  Env      `yaml:"env"`
+	Tabs map[string]string `yaml:"tabs"`
+	Env  Env               `yaml:"env"`
 }
 
 func loadConfig() (*Config, error) {
@@ -39,14 +40,14 @@ func buildEnvPrefix(env Env) string {
 	return strings.Join(parts, " && ")
 }
 
-func openNewTab(command string, env Env) error {
+func openNewTab(title string, command string, env Env) error {
 	command = os.Expand(command, func(key string) string {
 		return env[key]
 	})
 	environmentPrefix := buildEnvPrefix(env)
 	profileID := os.Getenv("WT_PROFILE_ID")
 
-	preamble := "echo 'Executing: " +  command + "'"
+	preamble := "echo 'Executing: " + command + "'"
 	divider := "echo '-------------------------------------'"
 
 	// returnToExit := "echo 'Press any key to exit' && read"
@@ -60,13 +61,17 @@ func openNewTab(command string, env Env) error {
 	commandToExecute := strings.Join(commandsToAppend, " && ")
 	fmt.Println(commandToExecute)
 
-	cmd := exec.Command("wt.exe", "-w", "0", "nt", "--profile", profileID,
-		"--", "wsl.exe", "--", "bash", "-c", commandToExecute)
+	cmd := exec.Command(
+		"wt.exe", "-w", "0", "nt", "--title", title,
+		"--profile", profileID,
+		"--", "wsl.exe", "--", "bash", "-c", commandToExecute,
+	)
 
 	return cmd.Start()
 }
 
-func main() {
+func up() {
+
 	config, err := loadConfig()
 	if err != nil {
 		fmt.Println("Error loading config:", err)
@@ -78,7 +83,55 @@ func main() {
 		os.Exit(1)
 	}
 
-	for _, tabCommand := range config.Tabs {
-		openNewTab(tabCommand, config.Env)
+	for title, tabCommand := range config.Tabs {
+		openNewTab(title, tabCommand, config.Env)
+	}
+}
+
+func execCommand(args []string) {
+	if len(args) == 0 {
+		fmt.Println("Usage: tim exec <command> [args...]")
+		os.Exit(1)
+	}
+
+	config, err := loadConfig()
+	if err != nil {
+		fmt.Println("Error loading config:", err)
+		os.Exit(1)
+	}
+
+	env := os.Environ()
+	if config != nil {
+		for k, v := range config.Env {
+			env = append(env, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+
+	binary, err := exec.LookPath(args[0])
+	if err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+
+	if err := syscall.Exec(binary, args, env); err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: tim <exec|up>")
+		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "exec":
+		execCommand(os.Args[2:])
+	case "up":
+		up()
+	default:
+		fmt.Printf("Unknown command: %s\n", os.Args[1])
+		os.Exit(1)
 	}
 }
