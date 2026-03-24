@@ -58,14 +58,21 @@ func openNewTab(title string, command string, env Env) error {
 		}
 	}
 
-	commandToExecute := strings.Join(commandsToAppend, " && ")
-	fmt.Println(commandToExecute)
+	timBinaryLocation, err := exec.LookPath("tim")
+	if err != nil {
+		fmt.Println("Error: Can't find tim in path", err)
+		os.Exit(1)
+	}
 
+	commandToExecute := strings.Join(commandsToAppend, " && ")
 	cmd := exec.Command(
 		"wt.exe", "-w", "0", "nt", "--title", title,
 		"--profile", profileID,
-		"--", "wsl.exe", "--", "bash", "-c", commandToExecute,
+		"--", "wsl.exe", "--",
+		timBinaryLocation, "exec", title, "bash", "-c", commandToExecute,
 	)
+
+	fmt.Println(cmd)
 
 	return cmd.Start()
 }
@@ -88,7 +95,7 @@ func up() {
 	}
 }
 
-func execCommand(args []string) {
+func execCommand(processName string, args []string) {
 	if len(args) == 0 {
 		fmt.Println("Usage: tim exec <command> [args...]")
 		os.Exit(1)
@@ -113,6 +120,10 @@ func execCommand(args []string) {
 		os.Exit(1)
 	}
 
+	os.MkdirAll(".tim", 0755)
+	pidFileName := fmt.Sprintf("./.tim/%s.pid", processName)
+	os.WriteFile(pidFileName, fmt.Appendf(nil, "%d", os.Getpid()), 0644)
+
 	if err := syscall.Exec(binary, args, env); err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
@@ -127,7 +138,7 @@ func main() {
 
 	switch os.Args[1] {
 	case "exec":
-		execCommand(os.Args[2:])
+		execCommand(os.Args[2], os.Args[3:])
 	case "up":
 		up()
 	default:
