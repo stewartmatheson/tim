@@ -118,6 +118,7 @@ func down() {
 		process, err := os.FindProcess(pid)
 		if err != nil {
 			fmt.Printf("Error finding process %d: %v\n", pid, err)
+			os.Remove(pidFile)
 			continue
 		}
 
