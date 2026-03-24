@@ -53,9 +53,20 @@ be referenced with `$VAR` syntax.
 
 ## How it works
 
-`tim up` opens a new Windows Terminal tab for each entry, launching the
-command via `tim exec` so the process PID is tracked in
-`.tim/<name>.pid`.
+`tim up` opens a new terminal tab for each entry, launching the command
+via `tim exec` so the process PID is tracked in `.tim/<name>.pid`.
 
 `tim down` reads those PID files and sends `SIGTERM` to each process for
 a graceful shutdown.
+
+## Known Issues
+
+**Orphaned PID files** --- If a tab is closed manually or the process is
+killed with Ctrl-C, the `.tim/<name>.pid` file is left behind. On the
+next `tim up`, that process will be skipped as if it were still running.
+The fix is to run `tim down` to clear the stale PID files, or delete
+them from `.tim/` by hand.
+
+A better long-term solution would be to replace `syscall.Exec` with a
+managed subprocess: spawn the process, forward signals to it, and clean
+up the PID file on exit regardless of how the process terminates.
