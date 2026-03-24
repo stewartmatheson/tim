@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -13,9 +12,9 @@ type Terminal interface {
 
 func DetectTerminal() (Terminal, error) {
 	if os.Getenv("WT_SESSION") != "" {
-		timPath, err := exec.LookPath("tim")
+		timPath, err := os.Executable()
 		if err != nil {
-			return nil, fmt.Errorf("tim not found in PATH: %w", err)
+			return nil, fmt.Errorf("could not determine tim binary path: %w", err)
 		}
 		return &WindowsTerminal{
 			profileID:  os.Getenv("WT_PROFILE_ID"),

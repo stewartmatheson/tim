@@ -70,3 +70,32 @@ them from `.tim/` by hand.
 A better long-term solution would be to replace `syscall.Exec` with a
 managed subprocess: spawn the process, forward signals to it, and clean
 up the PID file on exit regardless of how the process terminates.
+
+**Panic on `tim exec` with no arguments** --- Running `tim exec` without
+a command causes an index-out-of-bounds panic. The args check inside
+`execCommand` is too late since `os.Args[2]` is accessed at the call
+site before the function can validate.
+
+**Signalling PID 0 on corrupted PID file** --- `tim down` parses PID
+files with `fmt.Sscanf` without checking for errors. If the file
+contains invalid data, `pid` remains 0 and `SIGTERM` is sent to PID 0,
+which on Linux signals the entire process group.
+
+**Shell injection via environment variables** --- Values in the `env`
+config are interpolated directly into `export k=v` shell statements
+without quoting or escaping. A malicious or accidental value like
+`foo; rm -rf /` would execute arbitrary commands.
+
+**Shell injection via command echo** --- The command string is embedded
+in an `echo` statement without escaping. A command containing a single
+quote can break out of the string.
+
+**Unsanitised tab names used as filenames** --- Tab names are used
+directly in PID file paths (`.tim/<name>.pid`) with no sanitisation. A
+tab name like `../../etc/foo` would write outside the `.tim/` directory.
+
+**Ignored errors in exec setup** --- `os.MkdirAll` and `os.WriteFile`
+errors are silently ignored when creating the `.tim/` directory and
+writing PID files. If either fails, the process runs but is not tracked.
+
+**No tests** --- The project has no test coverage.
