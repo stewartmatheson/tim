@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -130,6 +131,39 @@ func execCommand(processName string, args []string) {
 	}
 }
 
+func down() {
+	pidFiles, err := filepath.Glob(".tim/*.pid")
+	if err != nil || len(pidFiles) == 0 {
+		fmt.Println("No running processes found")
+		return
+	}
+
+	for _, pidFile := range pidFiles {
+		data, err := os.ReadFile(pidFile)
+		if err != nil {
+			fmt.Printf("Error reading %s: %v\n", pidFile, err)
+			continue
+		}
+
+		var pid int
+		fmt.Sscanf(string(data), "%d", &pid)
+
+		process, err := os.FindProcess(pid)
+		if err != nil {
+			fmt.Printf("Error finding process %d: %v\n", pid, err)
+			continue
+		}
+
+		if err := process.Signal(syscall.SIGTERM); err != nil {
+			fmt.Printf("Error sending SIGTERM to %d: %v\n", pid, err)
+			continue
+		}
+
+		fmt.Printf("Sent SIGTERM to %d (%s)\n", pid, pidFile)
+		os.Remove(pidFile)
+	}
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: tim <exec|up>")
@@ -141,6 +175,8 @@ func main() {
 		execCommand(os.Args[2], os.Args[3:])
 	case "up":
 		up()
+	case "down":
+		down()
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		os.Exit(1)
