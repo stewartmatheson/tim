@@ -1,0 +1,8 @@
+tabs:
+  API Server: npm run dev
+  Worker: go run ./worker
+  Database: docker compose up db
+
+env:
+  NODE_ENV: development
+  DATABASE_URL: postgres://localhost/myapp

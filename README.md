@@ -1,34 +1,48 @@
-## Notes for Tim
+# tim
 
-Command to open a new tab in WSL with windows terminal
+Spin up your dev environment in a terminal tab per process.
 
-``` bash
-wt.exe -w 0 nt --profile "Ubuntu-24.04" -- wsl.exe -- bash -c "top -d 0.5"
+tim reads a `.tim.yml` config file and opens each process in its own Windows Terminal tab, with shared environment variables injected automatically.
+
+## Requirements
+
+- Windows Terminal (`wt.exe`)
+- WSL2
+
+## Installation
+
+```bash
+go install .
 ```
 
-Create user based on your current user
+Make sure `tim` is on your `$PATH` inside WSL.
 
-``` sql
-CREATE USER 'stewart'@'localhost' IDENTIFIED WITH auth_socket;
-GRANT ALL PRIVILEGES ON *.* TO 'stewart'@'localhost' WITH GRANT OPTION;
-FLUSH PRIVILEGES;
+## Usage
+
+```bash
+tim up      # start all processes
+tim down    # gracefully stop all running processes
 ```
 
-Comamnd to start mysql.
+## Configuration
 
-``` bash
-../install/8.4.8/bin/mysqld --datadir=. --user=$(whoami) --skip-grant-tables
-```
+Create a `.tim.yml` in your project root:
 
-The follwing will run a command in with mysqlclient built against a non
-standard mysql location.
-
-``` bash
-LD_LIBRARY_PATH=/home/stewart/code/open-source/mysql/install/8.4.8/lib ./manage.py runserver
-```
-
-``` yaml
+```yaml
 tabs:
-    - top
-    - htop
+  API Server: npm run dev
+  Worker: go run ./worker
+  Database: docker compose up db
+
+env:
+  NODE_ENV: development
+  DATABASE_URL: postgres://localhost/myapp
 ```
+
+Each key under `tabs` becomes the tab title; the value is the command to run. Variables defined under `env` are available to all commands and can be referenced with `$VAR` syntax.
+
+## How it works
+
+`tim up` opens a new Windows Terminal tab for each entry, launching the command via `tim exec` so the process PID is tracked in `.tim/<name>.pid`.
+
+`tim down` reads those PID files and sends `SIGTERM` to each process for a graceful shutdown.
