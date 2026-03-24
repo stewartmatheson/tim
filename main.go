@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"syscall"
 
 	"gopkg.in/yaml.v3"
@@ -33,51 +32,6 @@ func loadConfig() (*Config, error) {
 	return &config, nil
 }
 
-func buildEnvPrefix(env Env) string {
-	parts := make([]string, 0, len(env))
-	for k, v := range env {
-		parts = append(parts, fmt.Sprintf("export %s=%s", k, v))
-	}
-	return strings.Join(parts, " && ")
-}
-
-func openNewTab(title string, command string, env Env) error {
-	command = os.Expand(command, func(key string) string {
-		return env[key]
-	})
-	environmentPrefix := buildEnvPrefix(env)
-	profileID := os.Getenv("WT_PROFILE_ID")
-
-	preamble := "echo 'Executing: " + command + "'"
-	divider := "echo '-------------------------------------'"
-
-	// returnToExit := "echo 'Press any key to exit' && read"
-	commandsToAppend := []string{}
-	for _, part := range []string{environmentPrefix, preamble, divider, command} {
-		if part != "" {
-			commandsToAppend = append(commandsToAppend, part)
-		}
-	}
-
-	timBinaryLocation, err := exec.LookPath("tim")
-	if err != nil {
-		fmt.Println("Error: Can't find tim in path", err)
-		os.Exit(1)
-	}
-
-	commandToExecute := strings.Join(commandsToAppend, " && ")
-	cmd := exec.Command(
-		"wt.exe", "-w", "0", "nt", "--title", title,
-		"--profile", profileID,
-		"--", "wsl.exe", "--",
-		timBinaryLocation, "exec", title, "bash", "-c", commandToExecute,
-	)
-
-	fmt.Println(cmd)
-
-	return cmd.Start()
-}
-
 func up() {
 
 	config, err := loadConfig()
@@ -91,8 +45,21 @@ func up() {
 		os.Exit(1)
 	}
 
+	term, err := DetectTerminal()
+	if err != nil {
+		fmt.Println("Error detecting terminal:", err)
+		os.Exit(1)
+	}
+
 	for title, tabCommand := range config.Tabs {
-		openNewTab(title, tabCommand, config.Env)
+		pidFile := fmt.Sprintf(".tim/%s.pid", title)
+		if _, err := os.Stat(pidFile); err == nil {
+			fmt.Printf("Skipping %q: already running (pid file exists)\n", title)
+			continue
+		}
+		if err := term.OpenTab(title, tabCommand, config.Env); err != nil {
+			fmt.Printf("Error opening tab %q: %v\n", title, err)
+		}
 	}
 }
 
