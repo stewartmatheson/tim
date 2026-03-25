@@ -69,19 +69,6 @@ func execCommand(processName string, args []string) {
 		os.Exit(1)
 	}
 
-	config, err := loadConfig()
-	if err != nil {
-		fmt.Println("Error loading config:", err)
-		os.Exit(1)
-	}
-
-	env := os.Environ()
-	if config != nil {
-		for k, v := range config.Env {
-			env = append(env, fmt.Sprintf("%s=%s", k, v))
-		}
-	}
-
 	binary, err := exec.LookPath(args[0])
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -92,7 +79,7 @@ func execCommand(processName string, args []string) {
 	pidFileName := fmt.Sprintf("./.tim/%s.pid", processName)
 	os.WriteFile(pidFileName, fmt.Appendf(nil, "%d", os.Getpid()), 0644)
 
-	if err := syscall.Exec(binary, args, env); err != nil {
+	if err := syscall.Exec(binary, args, []string{}); err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
@@ -124,6 +111,7 @@ func down() {
 
 		if err := process.Signal(syscall.SIGTERM); err != nil {
 			fmt.Printf("Error sending SIGTERM to %d: %v\n", pid, err)
+			os.Remove(pidFile)
 			continue
 		}
 

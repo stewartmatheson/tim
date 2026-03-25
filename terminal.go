@@ -11,17 +11,25 @@ type Terminal interface {
 }
 
 func DetectTerminal() (Terminal, error) {
+	timPath, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("could not determine tim binary path: %w", err)
+	}
+
+	if os.Getenv("TMUX") != "" {
+		return &TmuxTerminal{
+			timBinPath: timPath,
+		}, nil
+	}
+
 	if os.Getenv("WT_SESSION") != "" {
-		timPath, err := os.Executable()
-		if err != nil {
-			return nil, fmt.Errorf("could not determine tim binary path: %w", err)
-		}
 		return &WindowsTerminal{
 			profileID:  os.Getenv("WT_PROFILE_ID"),
 			timBinPath: timPath,
 		}, nil
 	}
-	return nil, fmt.Errorf("unsupported terminal: set WT_SESSION or add an interface to tim for your terminal")
+
+	return nil, fmt.Errorf("unsupported terminal: set WT_SESSION or TMUX, or add an interface to tim for your terminal")
 }
 
 func buildEnvPrefix(env Env) string {
@@ -37,11 +45,9 @@ func buildShellCommand(title string, command string, env Env) string {
 		return env[key]
 	})
 	envPrefix := buildEnvPrefix(env)
-	preamble := "echo 'Executing: " + command + "'"
-	divider := "echo '-------------------------------------'"
 
 	parts := []string{}
-	for _, part := range []string{envPrefix, preamble, divider, command} {
+	for _, part := range []string{envPrefix, command} {
 		if part != "" {
 			parts = append(parts, part)
 		}
