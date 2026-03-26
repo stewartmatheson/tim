@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"syscall"
-
-	"gopkg.in/yaml.v3"
 )
 
 type Env map[string]string
@@ -63,28 +61,6 @@ func up() {
 	}
 }
 
-func execCommand(processName string, args []string) {
-	if len(args) == 0 {
-		fmt.Println("Usage: tim exec <command> [args...]")
-		os.Exit(1)
-	}
-
-	binary, err := exec.LookPath(args[0])
-	if err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
-	}
-
-	os.MkdirAll(".tim", 0755)
-	pidFileName := fmt.Sprintf("./.tim/%s.pid", processName)
-	os.WriteFile(pidFileName, fmt.Appendf(nil, "%d", os.Getpid()), 0644)
-
-	if err := syscall.Exec(binary, args, []string{}); err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
-	}
-}
-
 func down() {
 	pidFiles, err := filepath.Glob(".tim/*.pid")
 	if err != nil || len(pidFiles) == 0 {
@@ -128,7 +104,7 @@ func main() {
 
 	switch os.Args[1] {
 	case "exec":
-		execCommand(os.Args[2], os.Args[3:])
+		startProcess(os.Args[2], os.Args[3:])
 	case "up":
 		up()
 	case "down":
