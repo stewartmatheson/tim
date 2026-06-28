@@ -51,6 +51,29 @@ Each key under `tabs` becomes the tab title; the value is the command to
 run. Variables defined under `env` are available to all commands and can
 be referenced with `$VAR` syntax.
 
+A tab can also specify a list of commands, which are run sequentially
+(joined with `&&`):
+
+``` yaml
+tabs:
+  API Server:
+    - cd backend
+    - npm install
+    - npm run dev
+```
+
+By default tim auto-detects the terminal from the environment. To use a
+specific terminal, set `terminal`:
+
+``` yaml
+terminal: tmux  # or "wt" for Windows Terminal
+
+tabs:
+  API Server: npm run dev
+```
+
+Supported values: `tmux`, `wt`.
+
 ## How it works
 
 `tim up` opens a new terminal tab for each entry, launching the command

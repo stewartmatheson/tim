@@ -9,8 +9,8 @@ type WindowsTerminal struct {
 	timBinPath string
 }
 
-func (t *WindowsTerminal) OpenTab(title string, command string, env Env) error {
-	shellCmd := buildShellCommand(title, command, env)
+func (t *WindowsTerminal) OpenTab(title string, commands Commands, env Env) error {
+	shellCmd := buildShellCommand(commands, env)
 	cmd := exec.Command(
 		"wt.exe", "-w", "0", "nt", "--title", title,
 		"--profile", t.profileID,

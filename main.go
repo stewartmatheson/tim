@@ -10,9 +10,29 @@ import (
 
 type Env map[string]string
 
+type Commands []string
+
+func (c *Commands) UnmarshalYAML(value *yaml.Node) error {
+	switch value.Kind {
+	case yaml.ScalarNode:
+		*c = Commands{value.Value}
+		return nil
+	case yaml.SequenceNode:
+		var list []string
+		if err := value.Decode(&list); err != nil {
+			return err
+		}
+		*c = list
+		return nil
+	default:
+		return fmt.Errorf("expected string or list of strings, got %v", value.Kind)
+	}
+}
+
 type Config struct {
-	Tabs map[string]string `yaml:"tabs"`
-	Env  Env               `yaml:"env"`
+	Terminal string              `yaml:"terminal"`
+	Tabs     map[string]Commands `yaml:"tabs"`
+	Env      Env                 `yaml:"env"`
 }
 
 func loadConfig() (*Config, error) {
@@ -43,20 +63,26 @@ func up() {
 		os.Exit(1)
 	}
 
-	term, err := DetectTerminal()
+	term, err := DetectTerminal(config.Terminal)
 	if err != nil {
 		fmt.Println("Error detecting terminal:", err)
 		os.Exit(1)
 	}
 
-	for title, tabCommand := range config.Tabs {
+	for title, commands := range config.Tabs {
 		pidFile := fmt.Sprintf(".tim/%s.pid", title)
 		if _, err := os.Stat(pidFile); err == nil {
 			fmt.Printf("Skipping %q: already running (pid file exists)\n", title)
 			continue
 		}
-		if err := term.OpenTab(title, tabCommand, config.Env); err != nil {
+		if err := term.OpenTab(title, commands, config.Env); err != nil {
 			fmt.Printf("Error opening tab %q: %v\n", title, err)
+		}
+	}
+
+	if t, ok := term.(*TmuxTerminal); ok {
+		if err := t.Attach(); err != nil {
+			fmt.Printf("Error attaching to tmux session: %v\n", err)
 		}
 	}
 }

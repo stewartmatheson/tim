@@ -3,23 +3,42 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 type Terminal interface {
-	OpenTab(title string, command string, env Env) error
+	OpenTab(title string, commands Commands, env Env) error
 }
 
-func DetectTerminal() (Terminal, error) {
+func DetectTerminal(name string) (Terminal, error) {
 	timPath, err := os.Executable()
 	if err != nil {
 		return nil, fmt.Errorf("could not determine tim binary path: %w", err)
 	}
 
-	if os.Getenv("TMUX") != "" {
-		return &TmuxTerminal{
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("could not determine working directory: %w", err)
+	}
+	sessionName := filepath.Base(cwd)
+
+	switch name {
+	case "tmux":
+		return &TmuxTerminal{timBinPath: timPath, sessionName: sessionName}, nil
+	case "wt":
+		return &WindowsTerminal{
+			profileID:  os.Getenv("WT_PROFILE_ID"),
 			timBinPath: timPath,
 		}, nil
+	case "":
+		// Auto-detect
+	default:
+		return nil, fmt.Errorf("unknown terminal %q: supported values are \"tmux\" and \"wt\"", name)
+	}
+
+	if os.Getenv("TMUX") != "" {
+		return &TmuxTerminal{timBinPath: timPath, sessionName: sessionName}, nil
 	}
 
 	if os.Getenv("WT_SESSION") != "" {
@@ -29,7 +48,7 @@ func DetectTerminal() (Terminal, error) {
 		}, nil
 	}
 
-	return nil, fmt.Errorf("unsupported terminal: set WT_SESSION or TMUX, or add an interface to tim for your terminal")
+	return nil, fmt.Errorf("could not detect terminal: set WT_SESSION or TMUX, or set \"terminal\" in .tim.yml")
 }
 
 func buildEnvPrefix(env Env) string {
@@ -40,17 +59,18 @@ func buildEnvPrefix(env Env) string {
 	return strings.Join(parts, " && ")
 }
 
-func buildShellCommand(title string, command string, env Env) string {
-	command = os.Expand(command, func(key string) string {
-		return env[key]
-	})
-	envPrefix := buildEnvPrefix(env)
+func buildShellCommand(commands Commands, env Env) string {
+	expanded := make([]string, len(commands))
+	for i, cmd := range commands {
+		expanded[i] = os.Expand(cmd, func(key string) string {
+			return env[key]
+		})
+	}
 
 	parts := []string{}
-	for _, part := range []string{envPrefix, command} {
-		if part != "" {
-			parts = append(parts, part)
-		}
+	if envPrefix := buildEnvPrefix(env); envPrefix != "" {
+		parts = append(parts, envPrefix)
 	}
+	parts = append(parts, expanded...)
 	return strings.Join(parts, " && ")
 }
