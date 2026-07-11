@@ -1,5 +1,8 @@
 tabs:
-  API Server: npm run dev
+  API Server:
+    - cd backend
+    - npm install
+    - npm run dev
   Worker: go run ./worker
   Database: docker compose up db
 

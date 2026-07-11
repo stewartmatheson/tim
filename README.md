@@ -38,7 +38,10 @@ Create a `.tim.yml` in your project root:
 
 ``` yaml
 tabs:
-  API Server: npm run dev
+  API Server:
+    - cd backend
+    - npm install
+    - npm run dev
   Worker: go run ./worker
   Database: docker compose up db
 
@@ -47,20 +50,10 @@ env:
   DATABASE_URL: postgres://localhost/myapp
 ```
 
-Each key under `tabs` becomes the tab title; the value is the command to
-run. Variables defined under `env` are available to all commands and can
-be referenced with `$VAR` syntax.
-
-A tab can also specify a list of commands, which are run sequentially
-(joined with `&&`):
-
-``` yaml
-tabs:
-  API Server:
-    - cd backend
-    - npm install
-    - npm run dev
-```
+Each key under `tabs` becomes the tab title. The value is either a
+single command string or a list of commands run sequentially (joined with
+`&&`). Variables defined under `env` are available to all commands and
+can be referenced with `$VAR` syntax.
 
 By default tim auto-detects the terminal from the environment. To use a
 specific terminal, set `terminal`:
