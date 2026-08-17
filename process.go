@@ -39,6 +39,7 @@ func startProcess(processName string, args []string) {
 	}()
 
 	if err := cmd.Wait(); err != nil {
+		os.Remove(pidFileName)
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			os.Exit(exitErr.ExitCode())
 		}

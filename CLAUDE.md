@@ -32,4 +32,4 @@ Adding a new terminal: implement the `Terminal` interface and add detection logi
 
 ## Key Design Detail
 
-`tim exec` uses `syscall.Exec` (not `os/exec`) — it replaces the Go process entirely with the target command. This means no Go code runs after exec succeeds, so cleanup (like PID file removal) cannot happen from within the process. This is the root cause of the orphaned PID file problem.
+`tim exec` uses `os/exec` to run the child process and waits for it to finish. PID files are cleaned up via `defer` on normal exit and explicitly before `os.Exit` on error paths. As a safety net, `tim up` also checks whether a PID file's process is still alive before skipping a tab — stale PID files from crashes or unexpected termination are removed automatically.

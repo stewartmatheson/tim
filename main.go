@@ -72,8 +72,12 @@ func up() {
 	for title, commands := range config.Tabs {
 		pidFile := fmt.Sprintf(".tim/%s.pid", title)
 		if _, err := os.Stat(pidFile); err == nil {
-			fmt.Printf("Skipping %q: already running (pid file exists)\n", title)
-			continue
+			if isProcessRunning(pidFile) {
+				fmt.Printf("Skipping %q: already running (pid file exists)\n", title)
+				continue
+			}
+			fmt.Printf("Removing stale pid file for %q\n", title)
+			os.Remove(pidFile)
 		}
 		if err := term.OpenTab(title, commands, config.Env); err != nil {
 			fmt.Printf("Error opening tab %q: %v\n", title, err)
@@ -85,6 +89,21 @@ func up() {
 			fmt.Printf("Error attaching to tmux session: %v\n", err)
 		}
 	}
+}
+
+func isProcessRunning(pidFile string) bool {
+	data, err := os.ReadFile(pidFile)
+	if err != nil {
+		return false
+	}
+	var pid int
+	fmt.Sscanf(string(data), "%d", &pid)
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	// Signal 0 checks if the process exists without actually sending a signal
+	return process.Signal(syscall.Signal(0)) == nil
 }
 
 func down() {
