@@ -10,6 +10,7 @@ import (
 type TmuxTerminal struct {
 	timBinPath     string
 	sessionName    string
+	cwd            string
 	sessionCreated bool
 }
 
@@ -19,9 +20,10 @@ func (t *TmuxTerminal) hasSession() bool {
 }
 
 func (t *TmuxTerminal) OpenTab(title string, commands Commands, env Env) error {
-	shellCmd := buildShellCommand(commands, env) + "; exec $SHELL"
+	shell := userShell()
+	shellCmd := buildShellCommand(commands, env) + "; exec " + shell
 
-	tabCmd := []string{t.timBinPath, "exec", title, "bash", "-c", shellCmd}
+	tabCmd := direnvWrap(t.cwd, []string{t.timBinPath, "exec", title, shell, "-c", shellCmd})
 
 	var args []string
 	if !t.sessionCreated && !t.hasSession() {

@@ -15,7 +15,7 @@ func (t *WindowsTerminal) OpenTab(title string, commands Commands, env Env) erro
 		"wt.exe", "-w", "0", "nt", "--title", title,
 		"--profile", t.profileID,
 		"--", "wsl.exe", "--",
-		t.timBinPath, "exec", title, "bash", "-c", shellCmd,
+		t.timBinPath, "exec", title, userShell(), "-c", shellCmd,
 	)
 	return cmd.Start()
 }

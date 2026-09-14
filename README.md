@@ -11,10 +11,10 @@ tim currently supports:
 
 -   **Windows Terminal** (`wt.exe`) via WSL2
 -   [tmux](https://github.com/tmux/tmux)
+-   [kitty](https://sw.kovidgoyal.net/kitty/) (requires `allow_remote_control` enabled in `kitty.conf`)
 
 Support for additional terminal multiplexers is planned, including:
 
--   [kitty](https://sw.kovidgoyal.net/kitty/)
 -   [zellij](https://zellij.dev/)
 
 ## Installation
@@ -59,13 +59,13 @@ By default tim auto-detects the terminal from the environment. To use a
 specific terminal, set `terminal`:
 
 ``` yaml
-terminal: tmux  # or "wt" for Windows Terminal
+terminal: tmux  # or "wt" for Windows Terminal, "kitty" for the kitty terminal
 
 tabs:
   API Server: npm run dev
 ```
 
-Supported values: `tmux`, `wt`.
+Supported values: `tmux`, `wt`, `kitty`.
 
 ## How it works
 
