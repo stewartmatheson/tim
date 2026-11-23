@@ -9,13 +9,15 @@ type WindowsTerminal struct {
 	timBinPath string
 }
 
-func (t *WindowsTerminal) OpenTab(title string, commands Commands, env Env) error {
+func (t *WindowsTerminal) OpenTab(title, cwd, pidFile string, commands Commands, env Env) error {
 	shellCmd := buildShellCommand(commands, env)
-	cmd := exec.Command(
+	args := []string{
 		"wt.exe", "-w", "0", "nt", "--title", title,
 		"--profile", t.profileID,
-		"--", "wsl.exe", "--",
-		t.timBinPath, "exec", title, userShell(), "-c", shellCmd,
-	)
+		"--", "wsl.exe", "--cd", cwd, // Linux path inside WSL
+		"--",
+	}
+	args = append(args, execArgs(t.timBinPath, pidFile, userShell(), shellCmd)...)
+	cmd := exec.Command(args[0], args[1:]...)
 	return cmd.Start()
 }

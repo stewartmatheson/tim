@@ -3,30 +3,25 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
 type Terminal interface {
-	OpenTab(title string, commands Commands, env Env) error
+	OpenTab(title, cwd, pidFile string, commands Commands, env Env) error
 }
 
-func DetectTerminal(name string) (Terminal, error) {
+// DetectTerminal picks the terminal backend. sessionName names the tmux
+// session when tmux is used.
+func DetectTerminal(name, sessionName string) (Terminal, error) {
 	timPath, err := os.Executable()
 	if err != nil {
 		return nil, fmt.Errorf("could not determine tim binary path: %w", err)
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("could not determine working directory: %w", err)
-	}
-	sessionName := filepath.Base(cwd)
-
 	switch name {
 	case "tmux":
-		return &TmuxTerminal{timBinPath: timPath, sessionName: sessionName, cwd: cwd}, nil
+		return &TmuxTerminal{timBinPath: timPath, sessionName: sessionName}, nil
 	case "wt":
 		return &WindowsTerminal{
 			profileID:  os.Getenv("WT_PROFILE_ID"),
@@ -45,7 +40,7 @@ func DetectTerminal(name string) (Terminal, error) {
 	}
 
 	if os.Getenv("TMUX") != "" {
-		return &TmuxTerminal{timBinPath: timPath, sessionName: sessionName, cwd: cwd}, nil
+		return &TmuxTerminal{timBinPath: timPath, sessionName: sessionName}, nil
 	}
 
 	if os.Getenv("WT_SESSION") != "" {
@@ -83,6 +78,12 @@ func userShell() string {
 	return "bash"
 }
 
+// execArgs is the command line a terminal tab runs: `tim exec`, which loads
+// the user's shell environment and runs script in shell (see startProcess).
+func execArgs(timBinPath, pidFile, shell, script string) []string {
+	return []string{timBinPath, "exec", pidFile, shell, script}
+}
+
 // parentShell resolves the executable path of tim's parent process via
 // /proc, which is only available on Linux (including WSL).
 func parentShell() string {
@@ -93,13 +94,13 @@ func parentShell() string {
 	return exe
 }
 
-// direnvWrap prepends "direnv exec <cwd>" to args when direnv is installed
+// direnvWrap prepends "direnv exec <cwd>" to args when direnv is on path
 // and cwd has a .envrc, so tab commands see the same environment direnv's
 // shell hook would normally export. The hook itself never fires for tab
 // commands because they run via a non-interactive `shell -c`, which skips
 // the prompt cycle direnv hooks into.
-func direnvWrap(cwd string, args []string) []string {
-	if _, err := exec.LookPath("direnv"); err != nil {
+func direnvWrap(cwd, path string, args []string) []string {
+	if _, err := lookPath("direnv", path); err != nil {
 		return args
 	}
 	if _, err := os.Stat(filepath.Join(cwd, ".envrc")); err != nil {

@@ -10,7 +10,6 @@ import (
 type TmuxTerminal struct {
 	timBinPath     string
 	sessionName    string
-	cwd            string
 	sessionCreated bool
 }
 
@@ -19,18 +18,18 @@ func (t *TmuxTerminal) hasSession() bool {
 	return cmd.Run() == nil
 }
 
-func (t *TmuxTerminal) OpenTab(title string, commands Commands, env Env) error {
+func (t *TmuxTerminal) OpenTab(title, cwd, pidFile string, commands Commands, env Env) error {
 	shell := userShell()
 	shellCmd := buildShellCommand(commands, env) + "; exec " + shell
 
-	tabCmd := direnvWrap(t.cwd, []string{t.timBinPath, "exec", title, shell, "-c", shellCmd})
+	tabCmd := execArgs(t.timBinPath, pidFile, shell, shellCmd)
 
 	var args []string
 	if !t.sessionCreated && !t.hasSession() {
-		args = append([]string{"tmux", "new-session", "-d", "-s", t.sessionName, "-n", title, "--"}, tabCmd...)
+		args = append([]string{"tmux", "new-session", "-d", "-s", t.sessionName, "-n", title, "-c", cwd, "--"}, tabCmd...)
 		t.sessionCreated = true
 	} else {
-		args = append([]string{"tmux", "new-window", "-t", t.sessionName, "-n", title, "--"}, tabCmd...)
+		args = append([]string{"tmux", "new-window", "-t", t.sessionName, "-n", title, "-c", cwd, "--"}, tabCmd...)
 	}
 
 	fmt.Printf("[debug] %s\n", strings.Join(args, " "))

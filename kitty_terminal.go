@@ -2,14 +2,12 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 )
 
 type KittyTerminal struct {
 	timBinPath string
-	cwd        string
 }
 
 // newKittyTerminal checks that kitty's remote-control socket is reachable
@@ -26,24 +24,24 @@ func newKittyTerminal(timBinPath string) (*KittyTerminal, error) {
 			err, strings.TrimSpace(string(out)),
 		)
 	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("could not determine working directory: %w", err)
-	}
-	return &KittyTerminal{timBinPath: timBinPath, cwd: cwd}, nil
+	return &KittyTerminal{timBinPath: timBinPath}, nil
 }
 
-func (t *KittyTerminal) OpenTab(title string, commands Commands, env Env) error {
+func (t *KittyTerminal) OpenTab(title, cwd, pidFile string, commands Commands, env Env) error {
 	shell := userShell()
 	shellCmd := buildShellCommand(commands, env) + "; exec " + shell
 
-	tabCmd := direnvWrap(t.cwd, []string{t.timBinPath, "exec", title, shell, "-c", shellCmd})
+	tabCmd := execArgs(t.timBinPath, pidFile, shell, shellCmd)
 
 	args := []string{
 		"kitty", "@", "launch",
 		"--type=tab",
 		"--tab-title", title,
-		"--cwd", t.cwd,
+		"--cwd", cwd,
+		// Over remote control this copies the environment of the
+		// `kitty @` process (i.e. tim's, inherited from the shell that ran
+		// `tim up`), not the environment kitty itself started with.
+		"--copy-env",
 		"--",
 	}
 	args = append(args, tabCmd...)
