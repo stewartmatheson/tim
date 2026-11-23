@@ -91,6 +91,15 @@ func (p *ResolvedProject) sessionName() string {
 	return filepath.Base(p.Dir)
 }
 
+// tabTitle is the title shown on a tab: "project:tab" when the project has a
+// name, otherwise just the tab's name.
+func (p *ResolvedProject) tabTitle(tab string) string {
+	if p.Name != "" {
+		return p.Name + ":" + tab
+	}
+	return tab
+}
+
 // findConfig searches for .tim.yml starting in the current directory and
 // walking up through parent directories, stopping at the user's home
 // directory (or the filesystem root if the current directory is not under home).

@@ -55,7 +55,8 @@ env:
   DATABASE_URL: postgres://localhost/myapp
 ```
 
-Each key under `tabs` becomes the tab title. The value is either a
+Each key under `tabs` becomes the tab title. For a named project
+(under `projects`), the title is `project:tab`. The value is either a
 single command string or a list of commands run sequentially (joined with
 `&&`). Variables defined under `env` are available to all commands and
 can be referenced with `$VAR` syntax.

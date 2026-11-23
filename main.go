@@ -34,7 +34,7 @@ func up(projectName string) {
 			fmt.Printf("Removing stale pid file for %q\n", title)
 			os.Remove(pidFile)
 		}
-		if err := term.OpenTab(title, tab.Dir, pidFile, tab.Commands, project.Env); err != nil {
+		if err := term.OpenTab(project.tabTitle(title), tab.Dir, pidFile, tab.Commands, project.Env); err != nil {
 			fmt.Printf("Error opening tab %q: %v\n", title, err)
 		}
 	}
